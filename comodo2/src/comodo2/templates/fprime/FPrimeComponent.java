@@ -1,46 +1,34 @@
 package comodo2.templates.fprime;
 
-import com.google.common.collect.Iterables;
 import comodo2.engine.Main;
 import comodo2.queries.QClass;
-import comodo2.queries.QState;
-import comodo2.queries.QStateMachine;
 import comodo2.queries.QStereotype;
-import comodo2.queries.QTransition;
 import comodo2.utils.FilesHelper;
-import comodo2.utils.StateComparator;
-import comodo2.utils.TransitionComparator;
-import java.util.TreeSet;
 import javax.inject.Inject;
-import org.eclipse.uml2.uml.Element;
 import org.apache.log4j.Logger;
 import org.eclipse.emf.common.util.TreeIterator;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
-import org.eclipse.uml2.uml.State;
+import org.eclipse.uml2.uml.Class;
+import org.eclipse.uml2.uml.Element;
 import org.eclipse.uml2.uml.StateMachine;
-import org.eclipse.uml2.uml.Transition;
-import org.eclipse.xtend2.lib.StringConcatenation;
 import org.eclipse.xtext.generator.IFileSystemAccess;
 import org.eclipse.xtext.generator.IGenerator;
 
 /**
- * F Prime Component Generator
- * Generates F Prime-compatible C++ components from UML Classes and SysML Blocks
- * with embedded state machine and activity logic.
+ * Refactored F Prime Component Generator
+ * 
+ * Implements the new 3-stage pipeline:
+ * 1. UML 5.x XMI → F Prime XML descriptors
+ * 2. F Prime XML → F Prime Toolchain (fpp-to-cpp) → Auto-generated base classes
+ * 3. UML Semantic Analysis → Implementation classes with rich UML-derived logic
+ * 
+ * This approach leverages F Prime's native toolchain for standards compliance
+ * while preserving COMODO2's advanced UML semantic mapping capabilities.
  */
 public class FPrimeComponent implements IGenerator {
 
 	private static final Logger mLogger = Logger.getLogger(Main.class);
-
-	@Inject
-	private QStateMachine mQStateMachine;
-
-	@Inject
-	private QState mQState;
-
-	@Inject
-	private QTransition mQTransition;
 
 	@Inject
 	private QClass mQClass;
@@ -52,449 +40,258 @@ public class FPrimeComponent implements IGenerator {
 	private FilesHelper mFilesHelper;
 
 	@Inject
-	private FPrimeStateMachine mStateMachineGenerator;
+	private FPrimeXMLGenerator mXmlGenerator;
+
+	@Inject
+	private FPrimeToolchainInvoker mToolchainInvoker;
+
+	@Inject
+	private FPrimeImplementation mImplementationGenerator;
 
 	/**
-	 * Generate F Prime components from UML Classes and SysML Blocks
-	 * that have cmdoComponent stereotype and associated StateMachines.
+	 * Main generation entry point - orchestrates the 3-stage pipeline
 	 */
 	@Override
 	public void doGenerate(final Resource input, final IFileSystemAccess fsa) {
+		mLogger.info("Starting F Prime generation with refactored XMI → XML → Toolchain → Implementation pipeline");
+		
 		final TreeIterator<EObject> allContents = input.getAllContents();
 		while (allContents.hasNext()) {
 			EObject e = allContents.next();
-			if (e instanceof org.eclipse.uml2.uml.Class) {
-				org.eclipse.uml2.uml.Class c = (org.eclipse.uml2.uml.Class)e; 
-				// Use Element interface for unified UML Class and SysML Block support
-				if ((mQClass.isToBeGenerated((Element)c) && mQClass.hasStateMachines((Element)c))) {
-					for (final StateMachine sm : mQClass.getStateMachines((Element)c)) {
-						generateFPrimeComponent(c, sm, fsa);
+			if (e instanceof Class) {
+				Class c = (Class) e;
+				// Process UML Classes and SysML Blocks with cmdoComponent stereotype
+				if (mQClass.isToBeGenerated((Element) c) && mQClass.hasStateMachines((Element) c)) {
+					for (final StateMachine sm : mQClass.getStateMachines((Element) c)) {
+						generateFPrimeComponentPipeline(c, sm, input, fsa);
 					}
-				}				
-			}
-		}
-	}
-
-	/**
-	 * Generate complete F Prime component files (.fpp, .hpp, .cpp, CMakeLists.txt)
-	 */
-	private void generateFPrimeComponent(org.eclipse.uml2.uml.Class componentClass, StateMachine stateMachine, IFileSystemAccess fsa) {
-		String componentName = componentClass.getName();
-		
-		mLogger.info("Generating F Prime component: " + componentName);
-		
-		// Generate FPP interface definition
-		String fppContent = generateFPP(componentClass, stateMachine);
-		fsa.generateFile(mFilesHelper.toFPrimeFppFilePath(componentName), fppContent);
-		
-		// Generate C++ header file
-		String hppContent = generateComponentHeader(componentClass, stateMachine);
-		fsa.generateFile(mFilesHelper.toFPrimeHeaderFilePath(componentName), hppContent);
-		
-		// Generate C++ implementation file
-		String cppContent = generateComponentImplementation(componentClass, stateMachine);
-		fsa.generateFile(mFilesHelper.toFPrimeSourceFilePath(componentName), cppContent);
-		
-		// Generate CMake integration
-		String cmakeContent = generateCMakeFile(componentClass);
-		fsa.generateFile(mFilesHelper.toFPrimeCMakeFilePath(componentName), cmakeContent);
-	}
-
-	/**
-	 * Generate FPP (F Prime Prime) component interface definition
-	 */
-	private String generateFPP(org.eclipse.uml2.uml.Class componentClass, StateMachine stateMachine) {
-		StringConcatenation str = new StringConcatenation();
-		
-		str.append("# Auto-generated F Prime component interface");
-		str.newLine();
-		str.append("# Generated from UML/SysML model: " + componentClass.getName());
-		str.newLine();
-		str.newLine();
-		
-		// Determine component type (active for state machines)
-		str.append("active component " + componentClass.getName() + " {");
-		str.newLine();
-		str.newLine();
-		
-		// Standard F Prime ports
-		str.append("  # Standard F Prime component ports");
-		str.newLine();
-		str.append("  sync input port schedIn: Svc.Sched");
-		str.newLine();
-		str.append("  output port cmdRegOut: Fw.CmdReg");
-		str.newLine();
-		str.append("  output port cmdResponseOut: Fw.CmdResponse");
-		str.newLine();
-		str.append("  output port eventOut: Fw.LogEvent");
-		str.newLine();
-		str.append("  output port tlmOut: Fw.Tlm");
-		str.newLine();
-		str.newLine();
-		
-		// Commands from UML StateMachine events
-		str.append(mStateMachineGenerator.generateFPPCommands(stateMachine));
-		str.newLine();
-		str.append("  # Standard state machine control commands");
-		str.newLine();
-		str.append("  async command START_STATE_MACHINE");
-		str.newLine();
-		str.append("  async command STOP_STATE_MACHINE");
-		str.newLine();
-		str.newLine();
-		
-		// Telemetry for state machine
-		str.append("  # Telemetry for state machine monitoring");
-		str.newLine();
-		str.append("  telemetry CurrentState: string");
-		str.newLine();
-		str.newLine();
-		
-		// Events
-		str.append("  # Events for state machine transitions");
-		str.newLine();
-		str.append("  event StateTransition(from: string, to: string) severity activity high");
-		str.newLine();
-		
-		str.append("}");
-		str.newLine();
-		
-		return str.toString();
-	}
-
-	/**
-	 * Generate C++ component header file
-	 */
-	private String generateComponentHeader(org.eclipse.uml2.uml.Class componentClass, StateMachine stateMachine) {
-		StringConcatenation str = new StringConcatenation();
-		String componentName = componentClass.getName();
-		
-		str.append("#ifndef " + componentName.toUpperCase() + "_HPP");
-		str.newLine();
-		str.append("#define " + componentName.toUpperCase() + "_HPP");
-		str.newLine();
-		str.newLine();
-		
-		str.append("#include \"" + componentName + "ComponentAc.hpp\"");
-		str.newLine();
-		str.newLine();
-		
-		str.append("namespace " + getNamespace(componentClass) + " {");
-		str.newLine();
-		str.newLine();
-		
-		str.append("  class " + componentName + "ComponentImpl :");
-		str.newLine();
-		str.append("    public " + componentName + "ComponentBase");
-		str.newLine();
-		str.append("  {");
-		str.newLine();
-		str.newLine();
-		
-		str.append("    public:");
-		str.newLine();
-		str.append("      " + componentName + "ComponentImpl(const char* const compName);");
-		str.newLine();
-		str.append("      ~" + componentName + "ComponentImpl();");
-		str.newLine();
-		str.newLine();
-		
-		// State machine methods
-		str.append("      // State machine implementation");
-		str.newLine();
-		str.append("      void initializeStateMachine();");
-		str.newLine();
-		str.append("      void processStateMachine();");
-		str.newLine();
-		str.newLine();
-		
-		// Command handlers
-		str.append("      // Command handlers");
-		str.newLine();
-		str.append("      void START_STATE_MACHINE_cmdHandler(");
-		str.newLine();
-		str.append("          const FwOpcodeType opCode,");
-		str.newLine();
-		str.append("          const U32 cmdSeq");
-		str.newLine();
-		str.append("      );");
-		str.newLine();
-		str.append("      void STOP_STATE_MACHINE_cmdHandler(");
-		str.newLine();
-		str.append("          const FwOpcodeType opCode,");
-		str.newLine();
-		str.append("          const U32 cmdSeq");
-		str.newLine();
-		str.append("      );");
-		str.newLine();
-		str.newLine();
-		
-		// Private members
-		str.append("    private:");
-		str.newLine();
-		str.append("      // State machine state enumeration");
-		str.newLine();
-		str.append("      enum StateMachineStates {");
-		str.newLine();
-		
-		// Generate state enumeration from UML StateMachine
-		TreeSet<State> sortedStates = new TreeSet<State>(new StateComparator());
-		for (final State s : Iterables.<State>filter(stateMachine.allOwnedElements(), State.class)) {
-			if (mQState.isTopState(s)) {
-				sortedStates.add(s);
-			}
-		}
-		
-		boolean first = true;
-		for (final State s : sortedStates) {
-			if (!first) str.append(",");
-			str.newLine();
-			String stateName = getValidStateName(s);
-			str.append("        STATE_" + stateName.toUpperCase());
-			first = false;
-		}
-		str.newLine();
-		str.append("      };");
-		str.newLine();
-		str.newLine();
-		
-		str.append("      StateMachineStates m_currentState;");
-		str.newLine();
-		str.append("      bool m_stateMachineActive;");
-		str.newLine();
-		str.newLine();
-		
-		// State machine helper methods
-		str.append("      void transitionToState(StateMachineStates newState);");
-		str.newLine();
-		str.append("      const char* getStateName(StateMachineStates state);");
-		str.newLine();
-		str.newLine();
-		
-		// Activity method declarations
-		str.append("      // Activity implementations from UML model");
-		str.newLine();
-		str.append("      void executeActivities();");
-		str.newLine();
-		
-		str.append("  };");
-		str.newLine();
-		str.newLine();
-		str.append("} // end namespace " + getNamespace(componentClass));
-		str.newLine();
-		str.newLine();
-		str.append("#endif // " + componentName.toUpperCase() + "_HPP");
-		str.newLine();
-		
-		return str.toString();
-	}
-
-	/**
-	 * Generate C++ component implementation file
-	 */
-	private String generateComponentImplementation(org.eclipse.uml2.uml.Class componentClass, StateMachine stateMachine) {
-		StringConcatenation str = new StringConcatenation();
-		String componentName = componentClass.getName();
-		
-		str.append("#include \"" + componentName + ".hpp\"");
-		str.newLine();
-		str.append("#include <Fw/Types/Assert.hpp>");
-		str.newLine();
-		str.newLine();
-		
-		str.append("namespace " + getNamespace(componentClass) + " {");
-		str.newLine();
-		str.newLine();
-		
-		// Constructor
-		str.append("  " + componentName + "ComponentImpl::" + componentName + "ComponentImpl(const char* const compName) :");
-		str.newLine();
-		str.append("    " + componentName + "ComponentBase(compName),");
-		str.newLine();
-		str.append("    m_currentState(STATE_" + getInitialStateName(stateMachine).toUpperCase() + "),");
-		str.newLine();
-		str.append("    m_stateMachineActive(false)");
-		str.newLine();
-		str.append("  {");
-		str.newLine();
-		str.append("  }");
-		str.newLine();
-		str.newLine();
-		
-		// Destructor
-		str.append("  " + componentName + "ComponentImpl::~" + componentName + "ComponentImpl()");
-		str.newLine();
-		str.append("  {");
-		str.newLine();
-		str.append("  }");
-		str.newLine();
-		str.newLine();
-		
-		// State machine initialization
-		str.append("  void " + componentName + "ComponentImpl::initializeStateMachine()");
-		str.newLine();
-		str.append("  {");
-		str.newLine();
-		str.append("    m_currentState = STATE_" + getInitialStateName(stateMachine).toUpperCase() + ";");
-		str.newLine();
-		str.append("    m_stateMachineActive = true;");
-		str.newLine();
-		str.append("    this->log_ACTIVITY_HI_StateTransition(\"INIT\", \"" + getInitialStateName(stateMachine) + "\");");
-		str.newLine();
-		str.append("    this->tlmWrite_CurrentState(\"" + getInitialStateName(stateMachine) + "\");");
-		str.newLine();
-		str.append("  }");
-		str.newLine();
-		str.newLine();
-		
-		// Enhanced state machine processing with UML logic
-		str.append(mStateMachineGenerator.generateStateMachineImplementation(componentName, stateMachine));
-		str.newLine();
-		
-		// Command handlers
-		str.append("  void " + componentName + "ComponentImpl::START_STATE_MACHINE_cmdHandler(");
-		str.newLine();
-		str.append("      const FwOpcodeType opCode,");
-		str.newLine();
-		str.append("      const U32 cmdSeq");
-		str.newLine();
-		str.append("  )");
-		str.newLine();
-		str.append("  {");
-		str.newLine();
-		str.append("    initializeStateMachine();");
-		str.newLine();
-		str.append("    this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);");
-		str.newLine();
-		str.append("  }");
-		str.newLine();
-		str.newLine();
-		
-		str.append("  void " + componentName + "ComponentImpl::STOP_STATE_MACHINE_cmdHandler(");
-		str.newLine();
-		str.append("      const FwOpcodeType opCode,");
-		str.newLine();
-		str.append("      const U32 cmdSeq");
-		str.newLine();
-		str.append("  )");
-		str.newLine();
-		str.append("  {");
-		str.newLine();
-		str.append("    m_stateMachineActive = false;");
-		str.newLine();
-		str.append("    this->log_ACTIVITY_HI_StateTransition(\"ACTIVE\", \"STOPPED\");");
-		str.newLine();
-		str.append("    this->cmdResponse_out(opCode, cmdSeq, Fw::CmdResponse::OK);");
-		str.newLine();
-		str.append("  }");
-		str.newLine();
-		str.newLine();
-		
-		// UML Event-based command handlers
-		str.append(mStateMachineGenerator.generateEventHandlers(componentName, stateMachine));
-		str.newLine();
-		
-		// State transition helper methods
-		str.append(mStateMachineGenerator.generateTransitionHelper(componentName));
-		str.newLine();
-		
-		// Activity execution placeholder
-		str.append("  void " + componentName + "ComponentImpl::executeActivities()");
-		str.newLine();
-		str.append("  {");
-		str.newLine();
-		str.append("    // TODO: Implement UML Activity logic here");
-		str.newLine();
-		str.append("  }");
-		str.newLine();
-		str.newLine();
-		
-		str.append("} // end namespace " + getNamespace(componentClass));
-		str.newLine();
-		
-		return str.toString();
-	}
-
-	/**
-	 * Generate CMakeLists.txt for F Prime component
-	 */
-	private String generateCMakeFile(org.eclipse.uml2.uml.Class componentClass) {
-		StringConcatenation str = new StringConcatenation();
-		String componentName = componentClass.getName();
-		
-		str.append("# Auto-generated CMakeLists.txt for F Prime component");
-		str.newLine();
-		str.append("# Generated from UML/SysML model: " + componentName);
-		str.newLine();
-		str.newLine();
-		
-		str.append("set(SOURCE_FILES");
-		str.newLine();
-		str.append("  \"${CMAKE_CURRENT_LIST_DIR}/" + componentName + ".fpp\"");
-		str.newLine();
-		str.append("  \"${CMAKE_CURRENT_LIST_DIR}/" + componentName + ".cpp\"");
-		str.newLine();
-		str.append(")");
-		str.newLine();
-		str.newLine();
-		
-		str.append("register_fprime_module()");
-		str.newLine();
-		str.newLine();
-		
-		str.append("set(MOD_DEPS");
-		str.newLine();
-		str.append("  Fw/Cmd");
-		str.newLine();
-		str.append("  Fw/Log");
-		str.newLine();
-		str.append("  Fw/Tlm");
-		str.newLine();
-		str.append("  Svc/Sched");
-		str.newLine();
-		str.append(")");
-		str.newLine();
-		str.newLine();
-		
-		str.append("register_fprime_implementation()");
-		str.newLine();
-		
-		return str.toString();
-	}
-
-	/**
-	 * Get the initial state name from the state machine
-	 */
-	private String getInitialStateName(StateMachine stateMachine) {
-		String initialState = mQStateMachine.getInitialStateName(stateMachine);
-		if (initialState == null || initialState.isEmpty()) {
-			// Fallback to first top-level state
-			for (final State s : Iterables.<State>filter(stateMachine.allOwnedElements(), State.class)) {
-				if (mQState.isTopState(s)) {
-					return s.getName();
 				}
 			}
-			return "UNKNOWN";
 		}
-		return initialState;
+		
+		mLogger.info("F Prime generation pipeline completed");
 	}
 
 	/**
-	 * Get a valid state name, handling null/empty names
+	 * Execute the complete 3-stage F Prime component generation pipeline
 	 */
-	private String getValidStateName(State state) {
-		String name = state.getName();
-		if (name == null || name.trim().isEmpty()) {
-			return "UNNAMED_STATE_" + state.hashCode();
+	private void generateFPrimeComponentPipeline(Class componentClass, StateMachine stateMachine, 
+			Resource input, IFileSystemAccess fsa) {
+		
+		String componentName = componentClass.getName();
+		String uniqueComponentName = componentName + "_" + stateMachine.getName();
+		
+		mLogger.info("Processing component: " + componentName + " (StateMachine: " + stateMachine.getName() + ")");
+		
+		try {
+			// === STAGE 1: UML 5.x XMI → F Prime XML ===
+			boolean xmlGenerated = generateFPrimeXML(componentClass, stateMachine, input, fsa, uniqueComponentName);
+			if (!xmlGenerated) {
+				mLogger.error("Failed to generate F Prime XML for: " + componentName);
+				return;
+			}
+			
+			// === STAGE 2: F Prime XML → Toolchain → Base Classes ===
+			boolean baseClassesGenerated = generateFPrimeBaseClasses(uniqueComponentName, fsa);
+			if (!baseClassesGenerated) {
+				mLogger.warn("F Prime toolchain generation failed, continuing with mock base classes");
+			}
+			
+			// === STAGE 3: UML Semantics → Implementation Logic ===
+			boolean implementationGenerated = generateUMLImplementation(componentClass, stateMachine, input, fsa, uniqueComponentName);
+			if (!implementationGenerated) {
+				mLogger.error("Failed to generate UML implementation for: " + componentName);
+				return;
+			}
+			
+			// === STAGE 4: Build System Integration ===
+			generateBuildIntegration(componentClass, uniqueComponentName, fsa);
+			
+			mLogger.info("Successfully generated F Prime component: " + uniqueComponentName);
+			
+		} catch (Exception e) {
+			mLogger.error("Exception during F Prime component generation: " + e.getMessage(), e);
 		}
-		return name.trim();
 	}
 
 	/**
-	 * Get the namespace for the component based on its package structure
+	 * STAGE 1: Generate F Prime XML descriptors from UML 5.x XMI
 	 */
-	private String getNamespace(org.eclipse.uml2.uml.Class componentClass) {
-		// For now, use a simple namespace. Could be enhanced to use UML package structure
-		return "Components";
+	private boolean generateFPrimeXML(Class componentClass, StateMachine stateMachine, 
+			Resource input, IFileSystemAccess fsa, String uniqueComponentName) {
+		
+		mLogger.info("STAGE 1: Generating F Prime XML from UML XMI for: " + uniqueComponentName);
+		
+		try {
+			// Generate component XML descriptor
+			String componentXml = mXmlGenerator.generateComponentXML(componentClass, stateMachine, input);
+			String xmlPath = mFilesHelper.toFPrimeXmlFilePath(uniqueComponentName);
+			fsa.generateFile(xmlPath, componentXml);
+			
+			mLogger.info("Generated F Prime XML: " + xmlPath);
+			
+			// Optionally generate topology XML for multi-component systems
+			// String topologyXml = mXmlGenerator.generateTopologyXML(input, uniqueComponentName + "Topology");
+			// String topologyPath = mFilesHelper.toFPrimeTopologyXmlFilePath(uniqueComponentName);
+			// fsa.generateFile(topologyPath, topologyXml);
+			
+			return true;
+			
+		} catch (Exception e) {
+			mLogger.error("Failed to generate F Prime XML: " + e.getMessage(), e);
+			return false;
+		}
+	}
+
+	/**
+	 * STAGE 2: Invoke F Prime toolchain to generate base classes
+	 */
+	private boolean generateFPrimeBaseClasses(String uniqueComponentName, IFileSystemAccess fsa) {
+		mLogger.info("STAGE 2: Invoking F Prime toolchain for: " + uniqueComponentName);
+		
+		try {
+			// Get absolute paths for toolchain invocation
+			String xmlPath = mFilesHelper.toAbsolutePath(mFilesHelper.toFPrimeXmlFilePath(uniqueComponentName));
+			String outputDir = mFilesHelper.toAbsolutePath(mFilesHelper.toFPrimeGeneratedDir());
+			
+			// Invoke F Prime toolchain (fpp-to-cpp)
+			boolean success = mToolchainInvoker.generateBaseClasses(xmlPath, outputDir, uniqueComponentName);
+			
+			if (success) {
+				// Validate that expected files were generated
+				boolean validated = mToolchainInvoker.validateGeneratedFiles(outputDir, uniqueComponentName);
+				if (validated) {
+					mLogger.info("F Prime toolchain generation successful for: " + uniqueComponentName);
+					return true;
+				} else {
+					mLogger.warn("F Prime toolchain completed but generated files validation failed");
+					return false;
+				}
+			} else {
+				mLogger.warn("F Prime toolchain invocation failed, using mock base classes");
+				return false;  // Will use mock base classes
+			}
+			
+		} catch (Exception e) {
+			mLogger.error("Exception during F Prime toolchain invocation: " + e.getMessage(), e);
+			return false;
+		}
+	}
+
+	/**
+	 * STAGE 3: Generate UML-derived implementation logic
+	 */
+	private boolean generateUMLImplementation(Class componentClass, StateMachine stateMachine, 
+			Resource input, IFileSystemAccess fsa, String uniqueComponentName) {
+		
+		mLogger.info("STAGE 3: Generating UML-derived implementation for: " + uniqueComponentName);
+		
+		try {
+			// Generate implementation header with UML-derived logic
+			String implHeader = mImplementationGenerator.generateImplementationHeader(componentClass, stateMachine, input);
+			String headerPath = mFilesHelper.toFPrimeImplHeaderFilePath(uniqueComponentName);
+			fsa.generateFile(headerPath, implHeader);
+			
+			// Generate implementation source with rich UML semantics
+			String implSource = mImplementationGenerator.generateImplementationSource(componentClass, stateMachine, input);
+			String sourcePath = mFilesHelper.toFPrimeImplSourceFilePath(uniqueComponentName);
+			fsa.generateFile(sourcePath, implSource);
+			
+			mLogger.info("Generated UML implementation files:");
+			mLogger.info("  Header: " + headerPath);
+			mLogger.info("  Source: " + sourcePath);
+			
+			return true;
+			
+		} catch (Exception e) {
+			mLogger.error("Failed to generate UML implementation: " + e.getMessage(), e);
+			return false;
+		}
+	}
+
+	/**
+	 * STAGE 4: Generate build system integration (CMakeLists.txt)
+	 */
+	private void generateBuildIntegration(Class componentClass, String uniqueComponentName, IFileSystemAccess fsa) {
+		mLogger.info("STAGE 4: Generating build integration for: " + uniqueComponentName);
+		
+		try {
+			String cmakeContent = generateCMakeFile(componentClass, uniqueComponentName);
+			String cmakePath = mFilesHelper.toFPrimeCMakeFilePath(uniqueComponentName);
+			fsa.generateFile(cmakePath, cmakeContent);
+			
+			mLogger.info("Generated CMake integration: " + cmakePath);
+			
+		} catch (Exception e) {
+			mLogger.error("Failed to generate build integration: " + e.getMessage(), e);
+		}
+	}
+
+	/**
+	 * Generate enhanced CMakeLists.txt for F Prime component with new pipeline structure
+	 */
+	private String generateCMakeFile(Class componentClass, String uniqueComponentName) {
+		StringBuilder cmake = new StringBuilder();
+		
+		cmake.append("# Auto-generated CMakeLists.txt for F Prime component\n");
+		cmake.append("# Generated from UML 5.x XMI: ").append(componentClass.getName()).append("\n");
+		cmake.append("# Pipeline: XMI → XML → F Prime Toolchain → UML Implementation\n");
+		cmake.append("\n");
+		
+		cmake.append("# Component XML descriptor (input to F Prime toolchain)\n");
+		cmake.append("set(COMPONENT_XML \"${CMAKE_CURRENT_LIST_DIR}/").append(uniqueComponentName).append("Component.xml\")\n");
+		cmake.append("\n");
+		
+		cmake.append("# F Prime generated base classes (from toolchain)\n");
+		cmake.append("set(FPRIME_GENERATED_DIR \"${CMAKE_CURRENT_LIST_DIR}/generated\")\n");
+		cmake.append("\n");
+		
+		cmake.append("# UML-derived implementation files (our semantic logic)\n");
+		cmake.append("set(IMPLEMENTATION_FILES\n");
+		cmake.append("  \"${CMAKE_CURRENT_LIST_DIR}/").append(uniqueComponentName).append("ComponentImpl.hpp\"\n");
+		cmake.append("  \"${CMAKE_CURRENT_LIST_DIR}/").append(uniqueComponentName).append("ComponentImpl.cpp\"\n");
+		cmake.append(")\n");
+		cmake.append("\n");
+		
+		cmake.append("# F Prime base class files (generated by toolchain or mocked)\n");
+		cmake.append("set(FPRIME_BASE_FILES\n");
+		cmake.append("  \"${FPRIME_GENERATED_DIR}/").append(uniqueComponentName).append("ComponentBase.hpp\"\n");
+		cmake.append("  \"${FPRIME_GENERATED_DIR}/").append(uniqueComponentName).append("ComponentBase.cpp\"\n");
+		cmake.append("  \"${FPRIME_GENERATED_DIR}/").append(uniqueComponentName).append("ComponentAc.hpp\"\n");
+		cmake.append(")\n");
+		cmake.append("\n");
+		
+		cmake.append("# Register F Prime module\n");
+		cmake.append("register_fprime_module()\n");
+		cmake.append("\n");
+		
+		cmake.append("# Component dependencies\n");
+		cmake.append("set(MOD_DEPS\n");
+		cmake.append("  Fw/Cmd\n");
+		cmake.append("  Fw/Comp\n");
+		cmake.append("  Fw/Log\n");
+		cmake.append("  Fw/Tlm\n");
+		cmake.append("  Fw/Types\n");
+		cmake.append("  Svc/Sched\n");
+		cmake.append(")\n");
+		cmake.append("\n");
+		
+		cmake.append("# Include F Prime generated directory\n");
+		cmake.append("include_directories(${FPRIME_GENERATED_DIR})\n");
+		cmake.append("\n");
+		
+		cmake.append("# Build the component\n");
+		cmake.append("set(SOURCE_FILES ${IMPLEMENTATION_FILES} ${FPRIME_BASE_FILES})\n");
+		cmake.append("register_fprime_implementation()\n");
+		cmake.append("\n");
+		
+		cmake.append("# Custom targets for F Prime toolchain integration\n");
+		cmake.append("add_custom_target(generate_").append(uniqueComponentName.toLowerCase()).append("_base\n");
+		cmake.append("  COMMAND fpp-to-cpp --input ${COMPONENT_XML} --output-dir ${FPRIME_GENERATED_DIR}\n");
+		cmake.append("  DEPENDS ${COMPONENT_XML}\n");
+		cmake.append("  COMMENT \"Generating F Prime base classes from XML\"\n");
+		cmake.append(")\n");
+		
+		return cmake.toString();
 	}
 }
