@@ -321,13 +321,22 @@ public class Scxml implements IGenerator {
 						mQState.getStateName(s) + 
 						" has no trigger event and no guard, skipped since could introduce infinite loop!");
 			} else {
-				str.append(printTransitionStart(mQTransition.getFirstEventName(t), mQTransition.getResolvedGuardName(t), mQTransition.getTargetName(t), mQTransition.hasAction(t)));
+				String targetName = mQTransition.getTargetName(t);
+				// Skip transitions with empty targets unless they have events or guards
+				if ((targetName == null || targetName.trim().isEmpty()) && 
+					(mQTransition.getFirstEventName(t) == null || mQTransition.getFirstEventName(t).trim().isEmpty()) &&
+					(mQTransition.getResolvedGuardName(t) == null || mQTransition.getResolvedGuardName(t).trim().isEmpty())) {
+					mLogger.warn("Skipping transition with empty target, event, and guard from state " + mQState.getStateName(s));
+				} else {
+					str.append(printTransitionStart(mQTransition.getFirstEventName(t), mQTransition.getResolvedGuardName(t), targetName, mQTransition.hasAction(t)));
 				str.newLineIfNotEmpty();
-				if (mQTransition.hasAction(t)) {
-					str.append("  " + printAction(mQTransition.getFirstActionName(t)), "  ");
 					str.newLineIfNotEmpty();
-					str.append(printTransitionEnd());
-					str.newLineIfNotEmpty();
+					if (mQTransition.hasAction(t)) {
+						str.append("  " + printAction(mQTransition.getFirstActionName(t)), "  ");
+						str.newLineIfNotEmpty();
+						str.append(printTransitionEnd());
+						str.newLineIfNotEmpty();
+					}
 				}
 			}
 		}
@@ -336,7 +345,14 @@ public class Scxml implements IGenerator {
 
 	public CharSequence printInitial(final String name) {
 		String str = "<initial>\n";
-		str += "  <transition target=\"" + name + "\"/>\n";
+		// Only add target if name is not empty
+		if (name != null && !name.trim().isEmpty()) {
+			str += "  <transition target=\"" + name + "\"/>\n";
+		} else {
+			// Add comment for debugging empty initial targets
+			str += "  <!-- Warning: Empty initial target -->\n";
+			str += "  <transition/>\n";
+		}
 		str += "</initial>\n";
 		return str;
 	}
@@ -436,6 +452,10 @@ public class Scxml implements IGenerator {
 	}
 
 	public CharSequence printAction(final String name) {
+		// Only generate action tags for non-empty names
+		if (name == null || name.trim().isEmpty()) {
+			return "<!-- Warning: Empty action name -->\n";
+		}
 		return "<customActionDomain:" + name + " name=\"" + name + "\"/>\n";
 	}
 
@@ -452,13 +472,32 @@ public class Scxml implements IGenerator {
 	}
 
 	public CharSequence printFinalState(final State s) {
-		return "<final id=\"" + mQState.getStateName(s) + "\"/>\n";
+		String stateName = mQState.getStateName(s);
+		// Provide a default name for final states without names
+		if (stateName == null || stateName.trim().isEmpty()) {
+			stateName = "finalState";
+		}
+		return "<final id=\"" + stateName + "\"/>\n";
 	}
 
 	public CharSequence printStateMachineStart(final StateMachine sm) {
+		String initialState = mQStateMachine.getInitialStateName(sm);
+		// Use the first top-level state if no initial state is found
+		if (initialState == null || initialState.isEmpty()) {
+			for (final State s : Iterables.<State>filter(sm.allOwnedElements(), State.class)) {
+				if (mQState.isTopState(s)) {
+					initialState = mQState.getStateName(s);
+					break;
+				}
+			}
+		}
+		// Fallback to empty if still no state found
+		if (initialState == null) {
+			initialState = "";
+		}
 		return "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
 				"<scxml xmlns=\"http://www.w3.org/2005/07/scxml\" xmlns:customActionDomain=\"http://my.custom-actions.domain/CUSTOM\" version=\"1.0\" initial=\"" +
-				mQStateMachine.getInitialStateName(sm) + "\">\n";
+				initialState + "\">\n";
 	}
 
 	public CharSequence printStateMachineEnd() {
