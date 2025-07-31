@@ -102,7 +102,7 @@ public class FPrimeStateMachine {
 		}
 		
 		// Generate do activity
-		if (state.getDoActivity() != null) {
+		if (state.getDoActivity() != null && state.getDoActivity().getName() != null && !state.getDoActivity().getName().isEmpty()) {
 			str.append("        // Do activity: " + state.getDoActivity().getName());
 			str.newLine();
 			str.append("        execute_" + state.getDoActivity().getName() + "();");

@@ -114,20 +114,63 @@ public class FilesHelper {
 		return true;
 	}
 
-	// F Prime file path methods
+	// F Prime file path methods - Updated for new XMI → XML → Toolchain → Implementation pipeline
+	
+	/**
+	 * F Prime component XML descriptor (input to F Prime toolchain)
+	 */
+	public String toFPrimeXmlFilePath(final String componentName) {
+		return "/" + Config.getInstance().getCurrentModule() + "/" + componentName + "Component.xml";
+	}
+	
+	/**
+	 * F Prime topology XML (for multi-component systems)
+	 */
+	public String toFPrimeTopologyXmlFilePath(final String topologyName) {
+		return "/" + Config.getInstance().getCurrentModule() + "/" + topologyName + "Topology.xml";
+	}
+
+	/**
+	 * F Prime component implementation header (our UML-derived logic)
+	 */
+	public String toFPrimeImplHeaderFilePath(final String componentName) {
+		return "/" + Config.getInstance().getCurrentModule() + "/" + componentName + "ComponentImpl.hpp";
+	}
+
+	/**
+	 * F Prime component implementation source (our UML-derived logic)
+	 */
+	public String toFPrimeImplSourceFilePath(final String componentName) {
+		return "/" + Config.getInstance().getCurrentModule() + "/" + componentName + "ComponentImpl.cpp";
+	}
+
+	/**
+	 * F Prime generated base header directory (where F Prime toolchain outputs)
+	 */
+	public String toFPrimeGeneratedDir() {
+		return "/" + Config.getInstance().getCurrentModule() + "/generated/";
+	}
+
+	/**
+	 * F Prime CMakeLists.txt for component build
+	 */
+	public String toFPrimeCMakeFilePath(final String componentName) {
+		return "/" + Config.getInstance().getCurrentModule() + "/CMakeLists.txt";
+	}
+
+	// Legacy F Prime methods (deprecated - kept for backward compatibility)
+	@Deprecated
 	public String toFPrimeFppFilePath(final String componentName) {
 		return "/" + Config.getInstance().getCurrentModule() + "/" + componentName + ".fpp";
 	}
 
+	@Deprecated
 	public String toFPrimeHeaderFilePath(final String componentName) {
 		return "/" + Config.getInstance().getCurrentModule() + "/" + componentName + ".hpp";
 	}
 
+	@Deprecated
 	public String toFPrimeSourceFilePath(final String componentName) {
 		return "/" + Config.getInstance().getCurrentModule() + "/" + componentName + ".cpp";
-	}
-
-	public String toFPrimeCMakeFilePath(final String componentName) {
-		return "/" + Config.getInstance().getCurrentModule() + "/CMakeLists.txt";
 	}
 }
