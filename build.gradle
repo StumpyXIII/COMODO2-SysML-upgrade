@@ -5,22 +5,29 @@ plugins {
 
 version '1.0'
 
-repositories {
-    mavenCentral()
+// Set up for Java 8 compatibility with existing libs
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
 }
 
-def urlFile = { url, name ->
-    File file = new File("$buildDir/downloads/${name}.jar")
-    file.parentFile.mkdirs()
-    if (!file.exists()) {
-        new URL(url).withInputStream { downloadStream ->
-            file.withOutputStream { fileOut ->
-                fileOut << downloadStream
-            }
-        }
-    }
-    files(file.absolutePath)
+// JVM arguments for Java 21 compatibility with older libraries
+tasks.withType(JavaExec) {
+    jvmArgs '--add-opens', 'java.base/java.lang=ALL-UNNAMED'
+    jvmArgs '--add-opens', 'java.base/java.util=ALL-UNNAMED'
+    jvmArgs '--add-opens', 'java.base/java.security=ALL-UNNAMED'
+    jvmArgs '--add-opens', 'java.base/java.net=ALL-UNNAMED'
+    jvmArgs '--add-opens', 'java.base/java.nio=ALL-UNNAMED'
 }
+
+repositories {
+    mavenCentral()
+    flatDir {
+        dirs 'libs'
+    }
+}
+
+// Use existing libs directory instead of downloading
 
 dependencies {
     implementation group: 'javax.inject', name: 'javax.inject', version: '1'
@@ -37,12 +44,17 @@ dependencies {
     // https://mvnrepository.com/artifact/org.eclipse.xtext/org.eclipse.xtext
     implementation group: 'org.eclipse.xtext', name: 'org.eclipse.xtext', version: '2.19.0'
     
-    // Eclipse doesn't manage a Maven repo, so we use this function to get the JAR from direct download
-    implementation urlFile('https://download.eclipse.org/modeling/mdt/uml2/updates/5.5/R202211161811/plugins/org.eclipse.uml2.uml_5.5.0.v20221116-1811.jar', 'org.eclipse.uml2.uml_5.5.0')
-    implementation urlFile('https://download.eclipse.org/modeling/mdt/uml2/updates/5.5milestones/S202211161811/plugins/org.eclipse.uml2.common_2.5.0.v20221116-1811.jar', 'org.eclipse.uml2.common_2.5.0')
-    implementation urlFile('https://download.eclipse.org/modeling/mdt/uml2/updates/5.5milestones/S202211161811/plugins/org.eclipse.uml2.types_2.5.0.v20221116-1811.jar', 'org.eclipse.uml2.types_2.5.0')
-    implementation urlFile('https://download.eclipse.org/modeling/mdt/uml2/updates/5.5milestones/S202211161811/plugins/org.eclipse.uml2.uml.profile.standard_1.5.0.v20221116-1811.jar', 'org.eclipse.uml2.uml.profile.standard_1.5.0')
-    implementation urlFile('https://download.eclipse.org/modeling/mdt/uml2/updates/5.5milestones/S202211161811/plugins/org.eclipse.uml2.uml.resources_5.5.0.v20221116-1811.jar', 'org.eclipse.uml2.uml.resources_5.5.0')
+    // Use JARs from libs directory
+    implementation name: 'org.eclipse.uml2.uml_5.5.0.v20181203-1331', version: ''
+    implementation name: 'org.eclipse.uml2.common_2.5.0.v20181203-1331', version: ''
+    implementation name: 'org.eclipse.uml2.types_2.5.0.v20181203-1331', version: ''
+    implementation name: 'org.eclipse.uml2.uml.profile.standard_1.5.0.v20181203-1331', version: ''
+    implementation name: 'org.eclipse.uml2.uml.resources_5.5.0.v20181203-1331', version: ''
+    implementation name: 'org.eclipse.emf.ecore_2.17.0.v20190116-0940', version: ''
+    implementation name: 'org.eclipse.emf.common_2.15.0.v20181220-0846', version: ''
+    implementation name: 'org.eclipse.emf.ecore.xmi_2.15.0.v20180706-1146', version: ''
+    implementation name: 'org.eclipse.core.runtime_3.15.200.v20190301-1641', version: ''
+    implementation name: 'org.eclipse.equinox.common_3.10.300.v20190218-2100', version: ''
 
 }
 
@@ -86,7 +98,14 @@ def defineTargetTestingTask(String taskName, String targetType, String inputFile
     dependsOn build
     group = "Execution"
     description = "Run the ${targetType} target on the test models (${modelName})"
-    commandLine "java", "-classpath", sourceSets.main.runtimeClasspath.getAsPath(), mainClassName
+    commandLine "java", 
+      "--add-opens", "java.base/java.lang=ALL-UNNAMED",
+      "--add-opens", "java.base/java.util=ALL-UNNAMED", 
+      "--add-opens", "java.base/java.security=ALL-UNNAMED",
+      "--add-opens", "java.base/java.net=ALL-UNNAMED",
+      "--add-opens", "java.base/java.nio=ALL-UNNAMED",
+      "-classpath", sourceSets.main.runtimeClasspath.getAsPath(), 
+      mainClassName
     args "-i", inputFilePath, "-o", "${TEST_OUTPUT_PATH}/${taskName}", "-t", targetType, "-m", modelName, "-a", extraArgs
   }
 

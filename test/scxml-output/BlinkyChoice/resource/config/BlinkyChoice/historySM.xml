@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:customActionDomain="http://my.custom-actions.domain/CUSTOM" version="1.0" initial="initState">
+  <state id="backup">
+    <transition event="TURN_ON" target="null-region:"/>
+    <transition event="TURN_OFF" target="composite::"/>
+  </state>
+  <state id="composite">
+    <initial>
+      <transition target="composite::on"/>
+    </initial>
+  
+    <state id="composite::off">
+      <initial>
+        <transition target="composite::off::offInternaal"/>
+      </initial>
+    
+      <state id="composite::off::subsubstate">
+        <transition event="TURN_OFF" target="composite::off::"/>
+        <transition event="WIF_HEY" target="null-region:"/>
+      </state>
+    
+      <state id="composite::off::offInternaal">
+        <transition event="TURN_ON" target="composite::off::subsubstate"/>
+      </state>
+    
+      <final id="composite::off::"/>
+    
+      <final id="composite::off::"/>
+    
+      <history id="composite::" type="shallow">
+        <!-- Warning: History state  has no valid outgoing transition -->
+      </history>
+      <transition event="TURN_ON" target="composite::on"/>
+      <transition event="WIF_HEY" target="backup"/>
+    </state>
+  
+    <state id="composite::on">
+      <transition event="WIF_HEY" target="backup"/>
+      <transition event="after_5s" target="composite::off"/>
+    </state>
+  </state>
+  <state id="initState">
+    <transition event="WIF_HEY" target="composite"/>
+  </state>
+</scxml>

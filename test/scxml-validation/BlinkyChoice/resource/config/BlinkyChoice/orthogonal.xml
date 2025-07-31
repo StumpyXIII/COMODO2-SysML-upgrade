@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:customActionDomain="http://my.custom-actions.domain/CUSTOM" version="1.0" initial="init">
+  <state id="init">
+    <transition event="WIF_HEY" target="orthogonalState"/>
+  </state>
+  <parallel id="orthogonalState">
+    <state id="orthogonalState:">
+      <initial>
+        <transition target="orthogonalState::state1"/>
+      </initial>
+  
+      <state id="orthogonalState::state1">
+  	  <transition event="TURN_OFF" target="orthogonalState::"/>
+  	  <transition event="TURN_ON" target="orthogonalState::"/>
+  	</state>
+  
+      <final id="orthogonalState::"/>
+  
+    </state>
+    <state id="orthogonalState:">
+      <initial>
+        <transition target="orthogonalState::state2"/>
+      </initial>
+  
+      <state id="orthogonalState::state2">
+  	  <transition event="after_8s" target="orthogonalState::"/>
+  	  <transition event="TURN_ON" target="orthogonalState::">
+  	    <customActionDomain:do_this(EHH) name="do_this(EHH)"/>
+  	  </transition>
+  	</state>
+  
+      <final id="orthogonalState::"/>
+  
+    </state>
+    <transition event="TURN_OFF" target="init"/>
+  </parallel>
+</scxml>

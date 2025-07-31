@@ -15,17 +15,27 @@ public class QRegion {
 	private QState mQState;
 
 	public State getParentState(final Region r) {
+		if (r == null) {
+			return null;
+		}
 		return r.getState();
 	}
 
 	public String getFullyQualifiedName(final Region r) {
+		if (r == null) {
+			return "null-region";
+		}
 		if (isTopState(r)) {
-			return r.getName();
+			return r.getName() != null ? r.getName() : "unnamed-region";
 		}
 		if (r.getOwner() == null) {
-			return r.getName();
+			return r.getName() != null ? r.getName() : "unnamed-region";
 		}
-		return (mQState.getFullyQualifiedName(this.getParentState(r)) + ":" + r.getName());
+		State parentState = this.getParentState(r);
+		if (parentState == null) {
+			return r.getName() != null ? r.getName() : "unnamed-region";
+		}
+		return (mQState.getFullyQualifiedName(parentState) + ":" + (r.getName() != null ? r.getName() : "unnamed-region"));
 	}
 
 	public String getRegionName(final Region r) {
@@ -71,6 +81,15 @@ public class QRegion {
 	}
 
 	public boolean isTopState(final Region r) {
-		return Objects.equal(r.getOwner(), r.containingStateMachine());
+		if (r == null) {
+			return false;
+		}
+		try {
+			return Objects.equal(r.getOwner(), r.containingStateMachine());
+		} catch (Exception e) {
+			// If there's any issue accessing the owner or containing state machine,
+			// assume it's not a top state for safety
+			return false;
+		}
 	}
 }

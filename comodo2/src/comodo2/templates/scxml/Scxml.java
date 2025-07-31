@@ -7,12 +7,14 @@ import comodo2.queries.QClass;
 import comodo2.queries.QRegion;
 import comodo2.queries.QState;
 import comodo2.queries.QStateMachine;
+import comodo2.queries.QStereotype;
 import comodo2.queries.QTransition;
 import comodo2.utils.FilesHelper;
 import comodo2.utils.StateComparator;
 import comodo2.utils.TransitionComparator;
 import java.util.TreeSet;
 import javax.inject.Inject;
+import org.eclipse.uml2.uml.Element;
 import org.apache.log4j.Logger;
 import org.eclipse.emf.common.util.TreeIterator;
 import org.eclipse.emf.ecore.EObject;
@@ -46,6 +48,9 @@ public class Scxml implements IGenerator {
 	private QClass mQClass;
 
 	@Inject
+	private QStereotype mQStereotype;
+
+	@Inject
 	private FilesHelper mFilesHelper;
 
 	/**
@@ -77,8 +82,9 @@ public class Scxml implements IGenerator {
 			EObject e = allContents.next();
 			if (e instanceof org.eclipse.uml2.uml.Class) {
 				org.eclipse.uml2.uml.Class c = (org.eclipse.uml2.uml.Class)e; 
-				if ((mQClass.isToBeGenerated(c) && mQClass.hasStateMachines(c))) {
-					for (final StateMachine sm : mQClass.getStateMachines(c)) {
+				// Use Element interface for unified UML Class and SysML Block support
+				if ((mQClass.isToBeGenerated((Element)c) && mQClass.hasStateMachines((Element)c))) {
+					for (final StateMachine sm : mQClass.getStateMachines((Element)c)) {
 						mFilesHelper.makeBackup(mFilesHelper.toAbsolutePath(mFilesHelper.toScxmlFilePath(sm.getName())));
 						fsa.generateFile(mFilesHelper.toScxmlFilePath(sm.getName()), this.generate(sm));
 					}
@@ -269,8 +275,14 @@ public class Scxml implements IGenerator {
 		String str = "";
 		for (final Pseudostate hs : mQState.getHistory(s)) {
 			str += "<history id=\"" + mQRegion.getRegionName(hs.getContainer()) + ":" +  hs.getName() + "\" type=\"" + mQState.getHistoryTypeName(hs) + "\">\n";
-			str += "  <transition target=\"" + mQRegion.getRegionName(hs.getOutgoings().get(0).getTarget().getContainer()) + ":" + 
-					hs.getOutgoings().get(0).getTarget().getName() + "\"/>\n";
+			// Check if history state has outgoing transitions
+			if (hs.getOutgoings() != null && !hs.getOutgoings().isEmpty() && hs.getOutgoings().get(0).getTarget() != null) {
+				str += "  <transition target=\"" + mQRegion.getRegionName(hs.getOutgoings().get(0).getTarget().getContainer()) + ":" + 
+						hs.getOutgoings().get(0).getTarget().getName() + "\"/>\n";
+			} else {
+				// History state without valid outgoing transition - add comment for debugging
+				str += "  <!-- Warning: History state " + hs.getName() + " has no valid outgoing transition -->\n";
+			}
 			str += "</history>\n";
 		}
 		return str;

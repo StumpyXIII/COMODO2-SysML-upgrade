@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:customActionDomain="http://my.custom-actions.domain/CUSTOM" version="1.0" initial="T1">
+  <final id=""/>
+  <state id="T1">
+    <transition event="Start" target="T2"/>
+  </state>
+  <state id="T2">
+    <transition event="Start" target="T3"/>
+    <transition event="Exit"/>
+  </state>
+  <state id="T3">
+    <transition event="Start" target="T1"/>
+  </state>
+</scxml>

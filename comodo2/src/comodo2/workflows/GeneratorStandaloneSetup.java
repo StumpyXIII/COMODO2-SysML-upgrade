@@ -71,10 +71,66 @@ public class GeneratorStandaloneSetup implements ISetup {
 
 		umlResourcesPath = umlResourcesPath.substring(0, mmIndex);
 
-		// 
+		// Standard UML pathmaps
 		URIConverter.URI_MAP.put(URI.createURI("pathmap://UML_PROFILES/"), URI.createURI(umlResourcesPath+"/profiles/"));
 		URIConverter.URI_MAP.put(URI.createURI("pathmap://UML_METAMODELS/"), URI.createURI(umlResourcesPath+"/metamodels/"));
 		URIConverter.URI_MAP.put(URI.createURI("pathmap://UML_LIBRARIES/"), URI.createURI(umlResourcesPath+"/libraries/"));
+		
+		// Enhanced mappings for Cameo 2024r3 compatibility
+		registerCameoNamespaceMappings();
+	}
+	
+	/**
+	 * Register additional namespace mappings for Cameo 2024r3 compatibility
+	 */
+	private void registerCameoNamespaceMappings() {
+		// Register package mappings for different UML namespace versions
+		org.eclipse.emf.ecore.EPackage.Registry registry = org.eclipse.emf.ecore.EPackage.Registry.INSTANCE;
+		
+		// Standard Eclipse UML2 registrations
+		if (!registry.containsKey("http://www.eclipse.org/uml2/5.0.0/UML")) {
+			try {
+				registry.put("http://www.eclipse.org/uml2/5.0.0/UML", 
+					org.eclipse.uml2.uml.UMLPackage.eINSTANCE);
+			} catch (Exception e) {
+				System.err.println("Warning: Could not register UML2 5.0.0 namespace: " + e.getMessage());
+			}
+		}
+		
+		// OMG UML namespace registrations for newer Cameo versions
+		if (!registry.containsKey("http://www.omg.org/uml")) {
+			try {
+				registry.put("http://www.omg.org/uml", 
+					org.eclipse.uml2.uml.UMLPackage.eINSTANCE);
+			} catch (Exception e) {
+				System.err.println("Warning: Could not register OMG UML namespace: " + e.getMessage());
+			}
+		}
+		
+		if (!registry.containsKey("http://www.omg.org/spec/UML/20131001")) {
+			try {
+				registry.put("http://www.omg.org/spec/UML/20131001", 
+					org.eclipse.uml2.uml.UMLPackage.eINSTANCE);
+			} catch (Exception e) {
+				System.err.println("Warning: Could not register OMG UML 2013 namespace: " + e.getMessage());
+			}
+		}
+		
+		// Additional OMG namespaces for newer versions
+		String[] omgNamespaces = {
+			"http://www.omg.org/spec/UML/20161101",
+			"http://www.omg.org/spec/UML/20210201"
+		};
+		
+		for (String namespace : omgNamespaces) {
+			if (!registry.containsKey(namespace)) {
+				try {
+					registry.put(namespace, org.eclipse.uml2.uml.UMLPackage.eINSTANCE);
+				} catch (Exception e) {
+					System.err.println("Warning: Could not register namespace " + namespace + ": " + e.getMessage());
+				}
+			}
+		}
 	}
 
 }

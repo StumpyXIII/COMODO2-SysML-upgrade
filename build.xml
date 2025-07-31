@@ -11,7 +11,7 @@
   <property name="BIN_PATH" value="build/jar" />
   <property name="CLASSES_PATH" value="build/classes" />
 
-  <property name="INSTALL_PATH" value="${env.PREFIX}" />
+  <property name="INSTALL_PATH" value="/usr/local" />
   
   <!-- Classpath !-->
   <path id="comodo2.classpath">

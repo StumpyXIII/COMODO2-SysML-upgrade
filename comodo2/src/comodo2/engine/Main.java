@@ -24,6 +24,7 @@ import org.eclipse.xtext.resource.XtextResourceSet;
 import comodo2.templates.Root;
 import comodo2.workflows.GeneratorConfig;
 import comodo2.workflows.GeneratorStandaloneSetup;
+import comodo2.workflows.XMIVersionHandler;
 
 import com.google.inject.Injector;
 
@@ -222,6 +223,18 @@ public class Main {
 			// retrieves the model by URI. This also loads all its dependencies when needed
 			XtextResourceSet resourceSet = injector.getInstance(XtextResourceSet.class);
 			Resource inputModel = resourceSet.getResource(URI.createFileURI(modelFilePath.toAbsolutePath().toString()), true);
+			
+			// Enhanced Cameo 2024r3 compatibility: Analyze XMI version
+			XMIVersionHandler.XMIVersionInfo xmiInfo = XMIVersionHandler.analyzeXMIVersion(inputModel);
+			mLogger.info("Detected XMI version info: " + xmiInfo.toString());
+			
+			if (!XMIVersionHandler.isCompatibleVersion(xmiInfo)) {
+				mLogger.warn("Potentially incompatible XMI version detected!");
+				mLogger.warn(XMIVersionHandler.getCompatibilityRecommendation(xmiInfo));
+				mLogger.warn("Proceeding with translation attempt...");
+			} else {
+				mLogger.info("XMI version appears compatible");
+			}
 
 			/**
 			 * GENERATION
