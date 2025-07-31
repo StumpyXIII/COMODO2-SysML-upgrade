@@ -13,6 +13,7 @@ import org.eclipse.uml2.uml.Region;
 import org.eclipse.uml2.uml.State;
 import org.eclipse.uml2.uml.Transition;
 import org.eclipse.uml2.uml.Element;
+import org.eclipse.uml2.uml.Activity;
 
 public class QState {
 	@Inject
@@ -20,6 +21,9 @@ public class QState {
 
 	@Inject
 	private QTransition mQTransition;
+
+	@Inject
+	private QStereotype mQStereotype;
 
 	public Region getParentRegion(final State s) {
 		return s.getContainer();
@@ -262,7 +266,19 @@ public class QState {
 	}
 
 	public boolean hasDoActivities(final State s) {
-		return (s.getDoActivity() != null);
+		if (s.getDoActivity() != null) {
+			return true;
+		}
+		// Also check for SysML activities that might be associated with the state
+		for (Element e : s.allOwnedElements()) {
+			if (e instanceof Activity) {
+				Activity activity = (Activity) e;
+				if (isSysMLActivity(activity)) {
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	public boolean hasTimerTransition(final State s) {
@@ -407,5 +423,16 @@ public class QState {
 			parent_region = getParentRegion(parent_state);
 		}
 		return null;
+	}
+
+	/**
+	 * Check if an Activity is a SysML activity based on stereotypes
+	 * SysML activities can have stereotypes like <<streaming>>, <<nonStreaming>>, <<effbd>>
+	 */
+	private boolean isSysMLActivity(final Activity activity) {
+		return mQStereotype.hasAnyStereotype(activity, java.util.Arrays.asList(
+			"streaming", "nonStreaming", "effbd", "SysML::Activities::streaming", 
+			"SysML::Activities::nonStreaming", "SysML::Activities::effbd"
+		));
 	}
 }

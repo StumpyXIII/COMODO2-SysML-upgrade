@@ -16,6 +16,9 @@ import org.eclipse.uml2.uml.Signal;
 import org.eclipse.uml2.uml.State;
 import org.eclipse.uml2.uml.StateMachine;
 import org.eclipse.uml2.uml.Transition;
+import org.eclipse.uml2.uml.Element;
+import org.eclipse.uml2.uml.Activity;
+import org.eclipse.uml2.uml.FunctionBehavior;
 
 public class QStateMachine {
 	@Inject
@@ -23,6 +26,9 @@ public class QStateMachine {
 
 	@Inject
 	private QTransition mQTransition;
+
+	@Inject
+	private QStereotype mQStereotype;
 
 	/**
 	 * This function returns the name a state machine.
@@ -176,6 +182,16 @@ public class QStateMachine {
 		for (final State state : getAllAvailableStates(sm)) {
 			if (mQState.hasDoActivities(state)) {
 				names.add(state.getDoActivity().getName());
+			}
+		}
+		// Also check for SysML activities that might be represented differently
+		for (final Element element : sm.allOwnedElements()) {
+			if (element instanceof Activity) {
+				Activity activity = (Activity) element;
+				// Include SysML activities alongside UML activities
+				if (isSysMLActivity(activity) || isUMLActivity(activity)) {
+					names.add(activity.getName());
+				}
 			}
 		}
 		return names;
@@ -357,5 +373,24 @@ public class QStateMachine {
 			}
 		}
 		return orthStates;
+	}
+
+	/**
+	 * Check if an Activity is a SysML activity based on stereotypes
+	 * SysML activities can have stereotypes like <<streaming>>, <<nonStreaming>>, <<effbd>>
+	 */
+	private boolean isSysMLActivity(final Activity activity) {
+		return mQStereotype.hasAnyStereotype(activity, java.util.Arrays.asList(
+			"streaming", "nonStreaming", "effbd", "SysML::Activities::streaming", 
+			"SysML::Activities::nonStreaming", "SysML::Activities::effbd"
+		));
+	}
+
+	/**
+	 * Check if an Activity is a standard UML activity (no special SysML stereotypes)
+	 */
+	private boolean isUMLActivity(final Activity activity) {
+		// Standard UML activities are those without SysML-specific stereotypes
+		return !isSysMLActivity(activity);
 	}
 }

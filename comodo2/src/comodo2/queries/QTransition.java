@@ -28,6 +28,9 @@ public class QTransition {
 	@Inject
 	private QEvent mQEvent;
 
+	@Inject
+	private QStereotype mQStereotype;
+
 	public String getEventName(final Transition t) {
 		return getFirstEventName(t);
 		/*
@@ -177,7 +180,11 @@ public class QTransition {
 		*/
 		for (Element e : t.allOwnedElements()) {
 			if (e instanceof Activity) {
-				return ((Activity)e).getName();
+				Activity activity = (Activity) e;
+				// Support both UML and SysML activities
+				if (isSysMLActivity(activity) || isUMLActivity(activity)) {
+					return activity.getName();
+				}
 			}
 			if (e instanceof FunctionBehavior) {
 				return ((FunctionBehavior)e).getName();
@@ -354,6 +361,25 @@ public class QTransition {
 		} else {
 			return (t.getTriggers().get(0).getEvent().getClass() == TimeEventImpl.class);
 		}
+	}
+
+	/**
+	 * Check if an Activity is a SysML activity based on stereotypes
+	 * SysML activities can have stereotypes like <<streaming>>, <<nonStreaming>>, <<effbd>>
+	 */
+	private boolean isSysMLActivity(final Activity activity) {
+		return mQStereotype.hasAnyStereotype(activity, java.util.Arrays.asList(
+			"streaming", "nonStreaming", "effbd", "SysML::Activities::streaming", 
+			"SysML::Activities::nonStreaming", "SysML::Activities::effbd"
+		));
+	}
+
+	/**
+	 * Check if an Activity is a standard UML activity (no special SysML stereotypes)
+	 */
+	private boolean isUMLActivity(final Activity activity) {
+		// Standard UML activities are those without SysML-specific stereotypes
+		return !isSysMLActivity(activity);
 	}
 	
 }

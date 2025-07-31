@@ -3,6 +3,7 @@ package comodo2.queries;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.List;
 
 import com.google.common.collect.Iterables;
 import org.eclipse.uml2.uml.Element;
@@ -99,6 +100,27 @@ public class QStereotype {
 	 * Checks if element has any of the given stereotype variations
 	 */
 	public boolean hasAnyStereotype(final Element e, final Set<String> stereotypeNames) {
+		if ((e == null) || stereotypeNames == null || stereotypeNames.isEmpty()) {
+			return false;
+		}
+		if (e.getAppliedStereotypes() == null) {
+			return false;
+		}
+		
+		for (Stereotype s : Iterables.<Stereotype>filter(e.getAppliedStereotypes(), Stereotype.class)) {
+			for (String stereotypeName : stereotypeNames) {
+				if (matchesStereotype(s, stereotypeName)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+	
+	/**
+	 * Checks if element has any of the given stereotype variations (List version)
+	 */
+	public boolean hasAnyStereotype(final Element e, final List<String> stereotypeNames) {
 		if ((e == null) || stereotypeNames == null || stereotypeNames.isEmpty()) {
 			return false;
 		}
