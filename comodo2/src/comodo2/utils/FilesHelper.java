@@ -113,4 +113,21 @@ public class FilesHelper {
 		FilesHelper.mLogger.debug((("Skipped generation of: " + absPath) + ", file already exists."));
 		return true;
 	}
+
+	// F Prime file path methods
+	public String toFPrimeFppFilePath(final String componentName) {
+		return "/" + Config.getInstance().getCurrentModule() + "/" + componentName + ".fpp";
+	}
+
+	public String toFPrimeHeaderFilePath(final String componentName) {
+		return "/" + Config.getInstance().getCurrentModule() + "/" + componentName + ".hpp";
+	}
+
+	public String toFPrimeSourceFilePath(final String componentName) {
+		return "/" + Config.getInstance().getCurrentModule() + "/" + componentName + ".cpp";
+	}
+
+	public String toFPrimeCMakeFilePath(final String componentName) {
+		return "/" + Config.getInstance().getCurrentModule() + "/CMakeLists.txt";
+	}
 }

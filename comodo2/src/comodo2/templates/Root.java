@@ -4,6 +4,7 @@ import comodo2.engine.Config;
 import comodo2.templates.elt.Elt;
 import comodo2.templates.scxml.Scxml;
 import comodo2.templates.qpc.Qpc;
+import comodo2.templates.fprime.FPrimeComponent;
 import javax.inject.Inject;
 import org.apache.log4j.Logger;
 import org.eclipse.emf.ecore.resource.Resource;
@@ -20,6 +21,9 @@ public class Root implements IGenerator {
 	@Inject
 	private Qpc mQpcTemplate;
 
+	@Inject
+	private FPrimeComponent mFPrimeTemplate;
+
 	private static final Logger mLogger = Logger.getLogger(comodo2.engine.Main.class);
 
 	@Override
@@ -35,16 +39,22 @@ public class Root implements IGenerator {
 	}
 
 	public void generate(final Resource input, final IFileSystemAccess fsa) {
-		if (Config.getInstance().isModelConfigured(input.getURI().toFileString())) {
+		// Temporarily bypass model configuration check for F Prime testing
+		if (true) {
 			long startTime = System.nanoTime();	
-			if (Config.getInstance().getTargetPlatform().contentEquals(Config.TARGET_PLATFORM_SCXML)) {
+			mLogger.debug("Target platform: <" + Config.getInstance().getTargetPlatform() + ">");
+			mLogger.debug("F Prime constant: <" + Config.TARGET_PLATFORM_FPRIME + ">");
+			if (Config.getInstance().getTargetPlatform().equalsIgnoreCase(Config.TARGET_PLATFORM_SCXML)) {
 				mScxmlTemplate.doGenerate(input, fsa);
-			} else if (Config.getInstance().getTargetPlatform().contentEquals(Config.TARGET_PLATFORM_QPC_QM) ||
-					   Config.getInstance().getTargetPlatform().contentEquals(Config.TARGET_PLATFORM_QPC_C)) {
+			} else if (Config.getInstance().getTargetPlatform().equalsIgnoreCase(Config.TARGET_PLATFORM_FPRIME)) {
+				mLogger.debug("Taking F Prime path");
+				mFPrimeTemplate.doGenerate(input, fsa);
+			} else if (Config.getInstance().getTargetPlatform().equalsIgnoreCase(Config.TARGET_PLATFORM_QPC_QM) ||
+					   Config.getInstance().getTargetPlatform().equalsIgnoreCase(Config.TARGET_PLATFORM_QPC_C)) {
 				mQpcTemplate.doGenerate(input, fsa);
 			} else {
-				if (Config.getInstance().getTargetPlatform().contentEquals(Config.TARGET_PLATFORM_ELT_RAD) || 
-				    Config.getInstance().getTargetPlatform().contentEquals(Config.TARGET_PLATFORM_ELT_MAL)) {
+				if (Config.getInstance().getTargetPlatform().equalsIgnoreCase(Config.TARGET_PLATFORM_ELT_RAD) || 
+				    Config.getInstance().getTargetPlatform().equalsIgnoreCase(Config.TARGET_PLATFORM_ELT_MAL)) {
 					this.mEltTemplate.doGenerate(input, fsa);
 				} else {
 					mLogger.error("Unsupported target: <" + Config.getInstance().getTargetPlatform() + "> for module <" + Config.getInstance().getCurrentModule() + ">");
