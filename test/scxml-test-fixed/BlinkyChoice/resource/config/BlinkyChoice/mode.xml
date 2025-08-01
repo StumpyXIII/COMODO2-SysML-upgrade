@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:customActionDomain="http://my.custom-actions.domain/CUSTOM" version="1.0" initial="on">
+  <final id="finalState"/>
+  <state id="off">
+    <transition event="TURN_ON" target="on"/>
+    <transition event="TURN_OFF" cond="hey()"/>
+  </state>
+  <state id="on">
+    <transition event="TURN_OFF" target="off"/>
+  </state>
+</scxml>

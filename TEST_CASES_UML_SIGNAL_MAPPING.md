@@ -11,7 +11,7 @@
 
 **Test Steps**:
 ```bash
-comodo -i /home/stumpy/comodo2/tmp/SysML/CSRM.uml -t fprime -m cmdoOpticalCommUseCases -o test/fprime-signal-test1/ 2>&1
+comodo -i ./test/models/fprime-csrm/CSRM.uml -t fprime -m cmdoOpticalCommUseCases -o test/fprime-signal-test1/ 2>&1
 ```
 
 **Expected Results**:

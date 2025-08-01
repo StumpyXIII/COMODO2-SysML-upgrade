@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:customActionDomain="http://my.custom-actions.domain/CUSTOM" version="1.0" initial="hryoo">
+  <parallel id="">
+    <state id="">
+      <initial>
+        <transition target="state1"/>
+      </initial>
+  
+      <state id="state1">
+  	  <transition event="TURN_OFF"/>
+  	</state>
+  
+      <final id="finalState"/>
+  
+    </state>
+    <state id="">
+      <initial>
+        <transition target="state2"/>
+      </initial>
+  
+      <state id="state2">
+  	  <transition event="TURN_OFF"/>
+  	</state>
+  
+      <final id="finalState"/>
+  
+    </state>
+  </parallel>
+  <state id="hryoo">
+    <transition event="WIF_HEY"/>
+    <transition event="TURN_ON"/>
+  </state>
+</scxml>

@@ -12,7 +12,7 @@
 
 **Test Steps**:
 ```bash
-comodo -i /home/stumpy/comodo2/tmp/SysML/CSRM.uml -t fprime -m cmdoOpticalCommUseCases -o test/fprime-activity-test1/
+comodo -i ./test/models/fprime-csrm/CSRM.uml -t fprime -m cmdoOpticalCommUseCases -o test/fprime-activity-test1/
 ```
 
 **Expected Results**:
@@ -199,7 +199,7 @@ grep -A10 -B2 "Activity implementations from UML model" test/fprime-activity-tes
 ### Running All Basic Tests
 ```bash
 # Run comprehensive test
-comodo -i /home/stumpy/comodo2/tmp/SysML/CSRM.uml -t fprime -m cmdoOpticalCommUseCases -o test/fprime-comprehensive-test/ 2>&1 | tee test_results.log
+comodo -i ./test/models/fprime-csrm/CSRM.uml -t fprime -m cmdoOpticalCommUseCases -o test/fprime-comprehensive-test/ 2>&1 | tee test_results.log
 
 # Verify all expected outputs
 bash verify_activity_tests.sh

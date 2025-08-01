@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:customActionDomain="http://my.custom-actions.domain/CUSTOM" version="1.0" initial="STATE">
+  <state id="STATE">
+    <initial>
+      <transition target="STATE::STANDBY"/>
+    </initial>
+  
+    <state id="STATE::OPERATIONAL">
+      <initial>
+        <transition target="STATE::OPERATIONAL::ON"/>
+      </initial>
+    
+      <state id="STATE::OPERATIONAL::ON">
+        <onentry>
+          <customActionDomain:ON_CMD name="ON_CMD"/>
+        </onentry>	
+        <transition event="OFF_CMD" target="STATE::OPERATIONAL::OFF"/>
+      </state>
+    
+      <state id="STATE::OPERATIONAL::OFF">
+      </state>
+      <transition event="DIS_CMD" target="STATE::STANDBY"/>
+    </state>
+  
+    <state id="STATE::STANDBY">
+      <transition event="ENA_CMD" target="STATE::OPERATIONAL"/>
+    </state>
+  </state>
+</scxml>

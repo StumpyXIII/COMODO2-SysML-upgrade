@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:customActionDomain="http://my.custom-actions.domain/CUSTOM" version="1.0" initial="initState">
+  <state id="backup">
+    <transition event="TURN_ON"/>
+    <transition event="TURN_OFF"/>
+  </state>
+  <state id="composite">
+    <initial>
+      <transition target="on"/>
+    </initial>
+  
+    <state id="off">
+      <initial>
+        <transition target="offInternaal"/>
+      </initial>
+    
+      <state id="subsubstate">
+        <transition event="TURN_OFF"/>
+        <transition event="WIF_HEY"/>
+      </state>
+    
+      <state id="offInternaal">
+        <transition event="TURN_ON" target="subsubstate"/>
+      </state>
+    
+      <final id="finalState"/>
+    
+      <final id="finalState"/>
+    
+      <history id=":" type="shallow">
+        <!-- Warning: History state  has no valid outgoing transition -->
+      </history>
+      <transition event="TURN_ON" target="on"/>
+      <transition event="WIF_HEY" target="backup"/>
+    </state>
+  
+    <state id="on">
+      <transition event="WIF_HEY" target="backup"/>
+      <transition event="after_5s" target="off"/>
+    </state>
+  </state>
+  <state id="initState">
+    <transition event="WIF_HEY" target="composite"/>
+  </state>
+</scxml>
