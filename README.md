@@ -65,7 +65,7 @@ Input Model
 -----------
 The input model should comply with COMODO profile and be stored in EMF XMI 5.x format.
 
-For example, in MagicDrow, use the option: File -> Export to -> Eclipse UML2 XMI 5.x to export the model.
+For example, in MagicDraw, use the option: File -> Export to -> Eclipse UML2 XMI 5.x to export the model.
 
 Target Platforms
 ----------------
@@ -89,13 +89,13 @@ The following generation modes are supported:
 Generating C++ Code from Cameo/MagicDraw for F Prime
 ===================================================
 
-COMODO2 supports generating complete F Prime framework components from UML/SysML models created in Cameo Systems Modeler or MagicDraw. This process transforms UML activity diagrams with embedded logic into production-ready C++ code.
+COMODO2 supports generating complete F Prime framework components from UML/SysML models created in Cameo Systems Modeler 2024r3 with the CubeSat Reference Model. This process transforms UML activity diagrams with embedded logic into production-ready C++ code.
 
 ## Design Flow
 
 The F Prime code generation follows a specific pipeline:
 
-1. **UML/SysML Model (Cameo)** → Export to Eclipse UML2 XMI 5.x format
+1. **UML/SysML Model (Cameo)** → Export to Eclipse UML2 XMI 5.x format with appropriate cmdo model stereotypes assigned
 2. **UML XMI** → Generate F Prime XML component definitions  
 3. **F Prime XML** → Generate FPP (F Prime Protocol) files using `fpp-from-xml`
 4. **FPP Files** → Generate C++ base classes using `fpp-to-cpp`
@@ -125,26 +125,15 @@ Example UML activity logic that gets extracted:
 ```cpp
 // From UML OpaqueAction:
 auto timeStep = timeStep + 1;
-auto aoa = slewRate*timeStep;
-auto T2D = DesignT2D - DesignT2D*aoa*.4/15;
 ```
 
 ## Generating F Prime Code
 
 ### Prerequisites
 
-1. **F Prime Toolchain**: Install F Prime development environment
-   ```bash
-   # Install F Prime tools
-   pip install fprime-tools
-   ```
-
-2. **COMODO2**: Build and install COMODO2
-   ```bash
-   git clone <repository-url> comodo2
-   cd comodo2
-   ant clean build install
-   ```
+1. **F Prime Toolchain**: Install F Prime development environment from JPL: https://fprime.jpl.nasa.gov/
+   
+   IMPORTANT: You must have the frpime venv active to have access to fprime tooling, particularly XML-to-fpp and fpp-to-cpp
 
 ### Export Model from Cameo
 
@@ -265,12 +254,7 @@ To manually test generated F Prime components:
 
 1. **F Prime Toolchain Not Found:**
    ```bash
-   # Ensure F Prime tools are in PATH
-   which fpp-from-xml fpp-to-cpp
-   
-   # Install if missing
-   pip install fprime-tools
-   ```
+   you need to be running from within a setup fprime venv, follow their instructions!
 
 2. **Missing ConfigCheck.hpp:**
    - This is expected when F Prime project context is not available

@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<scxml xmlns="http://www.w3.org/2005/07/scxml" xmlns:customActionDomain="http://my.custom-actions.domain/CUSTOM" version="1.0" initial="initState">
-  <state id="Absolute_state2">
-    <transition event="TURN_OFF" target="initState"/>
-  </state>
-  <state id="initState">
-    <transition event="at_6s" target="Absolute_state2"/>
-  </state>
-</scxml>
